@@ -3,13 +3,17 @@ from mongoengine import ValidationError, NotUniqueError
 from flask_restful import Resource
 import json
 from model import User
-import jwt
-from util import send_email, get_token, token_required
+from util import send_email, get_token, token_required, decoded_token
 from dotenv import load_dotenv
 load_dotenv()
 
 
 class UserRegistration(Resource):
+    """
+        This api is for user registration for userlogin project
+        @param request: user registration data like username, email, password
+        @return: account verification link to registered email once registration is successful
+    """
     def post(self):
         data = json.loads(request.data)
         first_name = data.get('first_name')
@@ -44,6 +48,11 @@ class UserRegistration(Resource):
 
 
 class LoginUser(Resource):
+    """
+        This API is used to login user in their account after authenticate user to access resources
+        @param request: user credential like username and password
+        @return: Returns success message and access token on successful login
+    """
     def get(self):
         try:
             data = request.args
@@ -67,6 +76,10 @@ class LoginUser(Resource):
 
 
 class LogoutUser(Resource):
+    """
+        Api clear all data in session
+        :return: message for logged out
+    """
     def get(self):
         user_id = session['id']
         session['logged_in'] = False
@@ -75,11 +88,16 @@ class LogoutUser(Resource):
 
 
 class ActivateAccount(Resource):
+    """
+        This Api verifies the user-id and jwt token sent to the email and activates the account
+        @param request: Get request hits with jwt token which contains user information
+        @return: Account activation confirmation
+    """
     def get(self):
         try:
             token = request.args.get('token')
             print('token', token)
-            decode_ = jwt.decode(token, "secret", algorithms=["HS256"])
+            decode_ = decoded_token(token)
             new_user = User.objects.get(id=decode_.get('user_id'))
             new_user.is_active = True
             new_user.save()
@@ -89,15 +107,18 @@ class ActivateAccount(Resource):
 
 
 class ForgetPassword(Resource):
+    """
+        This API accepts get request from the email on clicked on link
+        @param : email and token
+        @return: success message
+    """
     @token_required
     def post(self, current_user):
         try:
-            # user_id = request.form.get('user_id')
             data = User.objects(id=current_user.user_id).first()
             if not data:
                 return {'message': 'User id not found!!'}
             email = data.email
-            # name = data.user_name
             print(f'{current_user.user_id} has been forgotten their password')
             token = get_token(data.id, data.user_name)
             url = f'http://127.0.0.1:9090//resetpassword/?token={token}'
@@ -110,10 +131,14 @@ class ForgetPassword(Resource):
 
 
 class ResetPassword(Resource):
+    """
+        This API accepts changes in current password
+        @param : current password and new password
+        @return: success message for updating the password to new password
+    """
     @token_required
     def post(self, current_user):
         try:
-            # user_name = request.form.get('user_name')
             data = User.objects(user_name=current_user.user_name).first()
             new_password = request.form.get('new_password')
             conf_new_password = request.form.get('conf_new_password')

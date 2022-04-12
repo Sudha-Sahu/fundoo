@@ -2,11 +2,11 @@ import os
 import smtplib
 import email.message
 from functools import wraps
-from flask import session, request, url_for, render_template
+from flask import request
 import jwt
 from dotenv import load_dotenv
 import datetime
-from model import User
+from fundoo.user.model import User
 load_dotenv()
 
 
@@ -39,6 +39,11 @@ def get_token(user_id, user_name):
     return token
 
 
+def decoded_token(token):
+    data = jwt.decode(token, os.environ.get('SECRET_KEY'), algorithms=["HS256"])
+    return data
+
+
 def token_required(func):
     @wraps(func)
     def user_decorator(*args, **kwargs):
@@ -48,7 +53,7 @@ def token_required(func):
         if not token:
             return {'message': 'Token is missing!', 'code': 409}
         try:
-            data = jwt.decode(token, os.environ.get('SECRET_KEY'), algorithms=["HS256"])
+            data = decoded_token(token)
             current_user = User.objects(user_name=data.user_name).first()
         except Exception as e:
             return {'message': 'token is invalid', 'code': 409}
@@ -57,15 +62,3 @@ def token_required(func):
     return user_decorator
 
 
-
-#send_email('sudhasahu52@gmail.com', temp)
-#get_token(31, "Dhaiya Kumar")
-"""
-def login_essential(f):
-    @wraps(f)
-    def decorated(*args, **kwargs):
-        if not session['logged_in']:
-            return {'Error': 'You have to login first'}
-        return f(*args, **kwargs)
-    return decorated
-"""
