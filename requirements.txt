@@ -1,12 +1,3 @@
-from flask import Flask, request, session
-from mongoengine import connect, ValidationError, NotUniqueError
-from flask_restful import Resource, Api
-import json
-from model import User
-import jwt
-from util import activate_my_email
-
-
 
 aniso8601==9.0.1
 click==8.1.2
