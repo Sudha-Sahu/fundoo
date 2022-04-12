@@ -4,8 +4,7 @@ from flask_restful import Resource
 import json
 from model import User
 import jwt
-from util import send_email, get_token, token_required, login_essential
-import os
+from util import send_email, get_token, token_required
 from dotenv import load_dotenv
 load_dotenv()
 
@@ -34,16 +33,14 @@ class UserRegistration(Resource):
             token = get_token(new_user.id, new_user.user_name)
             url = f'http://127.0.0.1:9090//activate?token={token}'
             email = new_user.email
-            msg = f'Hello {new_user.user_name} your account is created successfully. ' \
-                  f'Now you need to activate your account by clicking the link ahead.... {url}'
-            template_ = render_template(os.getenv('bodycontent'))
+            template_ = render_template('email_form.html', data=url)
             send_email(email, template_)
         except ValidationError as e:
             return {'error': e.to_dict()}
         except NotUniqueError as e:
             return {'error': str(e)}
-
-        # return {'msg': 'new user added successfully', 'token_activate_url': url}
+        except TypeError:
+            return {'msg': 'new user added successfully', 'token_activate_url': url}
 
 
 class LoginUser(Resource):
@@ -78,7 +75,6 @@ class LogoutUser(Resource):
 
 
 class ActivateAccount(Resource):
-    @token_required
     def get(self):
         try:
             token = request.args.get('token')
@@ -93,35 +89,37 @@ class ActivateAccount(Resource):
 
 
 class ForgetPassword(Resource):
-    def post(self):
+    @token_required
+    def post(self, current_user):
         try:
-            user_id = request.form.get('user_id')
-            data = User.objects(id=user_id).first()
+            # user_id = request.form.get('user_id')
+            data = User.objects(id=current_user.user_id).first()
             if not data:
                 return {'message': 'User id not found!!'}
             email = data.email
-            name = data.user_name
-            print(f'{user_id} has been forgotten their password')
-            token = get_token(data.id, name)
+            # name = data.user_name
+            print(f'{current_user.user_id} has been forgotten their password')
+            token = get_token(data.id, data.user_name)
             url = f'http://127.0.0.1:9090//resetpassword/?token={token}'
-            msg = f'Hello {name} click here to reset yor password....{url}'
-            send_email(email, msg)
+            template = render_template('email_form.html', data=url)
+            send_email(email, template)
             data.save()
             return {'msg': 'Check your Registered Mail ID to set new Password....'}
-        except Exception :
+        except Exception:
             return {'error': 'Token is missing or expired', 'status code': 400}
 
 
 class ResetPassword(Resource):
-    def post(self):
+    @token_required
+    def post(self, current_user):
         try:
-            user_name = request.form.get('user_name')
-            data = User.objects(user_name=user_name).first()
+            # user_name = request.form.get('user_name')
+            data = User.objects(user_name=current_user.user_name).first()
             new_password = request.form.get('new_password')
             conf_new_password = request.form.get('conf_new_password')
             if new_password == conf_new_password:
                 data.password = new_password
-                print(f'{user_name} changed his password')
+                print(f'{current_user.user_name} changed his password')
                 data.save()
                 return {'msg': 'Your new Password is Updated.'}
             else:

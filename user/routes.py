@@ -1,3 +1,16 @@
+from apis import UserRegistration, LogoutUser, ResetPassword, ForgetPassword, LoginUser, ActivateAccount
+
+user_routes = [
+    (LoginUser, '/login/'),
+    (UserRegistration, '/register/'),
+    (ActivateAccount, '/activate/'),
+    (ForgetPassword, '/forgetpassword/'),
+    (LogoutUser, '/logout/'),
+    (ResetPassword, '/resetpassword/')
+]
+
+
+"""
 
 from flask import Flask, request, session
 from mongoengine import ValidationError, NotUniqueError
@@ -5,7 +18,7 @@ from flask_restful import Resource, Api
 import json
 from model import User
 import jwt
-from util import activate_my_email
+from util import send mail
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'af6263f9c9984fd78fb242775905d95f'
@@ -111,3 +124,6 @@ class ResetPassword(Resource):
                 return {'msg': 'Re-Entered Password must be equal to New_Password'}
         else:
             return {'msg': 'user please Login First'}
+
+
+"""

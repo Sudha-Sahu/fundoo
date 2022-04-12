@@ -1,20 +1,28 @@
-from routes import LoginUser, UserRegistration, ActivateAccount, LogoutUser, ForgetPassword, ResetPassword
+from routes import all_routes
+from dotenv import load_dotenv
+from db.mydatabase import user_database
 from flask import Flask
+import os
 from flask_restful import Api
-from db.mydatabase import my_database
+
+load_dotenv()
+
+user_database()
 
 app = Flask(__name__)
+app.config['SECRET_KEY'] = str(os.getenv("SECRET_KEY"))
 api = Api(app)
 
 
-api.add_resource(LoginUser, '/login/')
-api.add_resource(UserRegistration, '/register/')
-api.add_resource(ActivateAccount, '/activate/')
-api.add_resource(LogoutUser, '/logout/')
-api.add_resource(ForgetPassword, '/forgetpassword/')
-api.add_resource(ResetPassword, '/resetpassword/')
+def call_api():
+    for data in all_routes:
+        api_class = data[0]
+        endpoint = data[1]
+        api.add_resource(api_class, endpoint)
+
+
+call_api()
 
 
 if __name__ == "__main__":
     app.run(debug=True, port=9090)
-
