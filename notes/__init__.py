@@ -1,9 +1,6 @@
-from notes_apis import RegistrationForNotes, LoginForNotes, AddNewNote, EditNote, DeleteNote
+from .notes_apis import Note, EditNotes
 
 notes_routes = [
-    (LoginForNotes, '/login/notes/'),
-    (RegistrationForNotes, '/registerFor/notes'),
-    (AddNewNote, '/add/notes/'),
-    (EditNote, '/edit/notes/'),
-    (DeleteNote, '/delete/notes')
+    (Note, '/notes/'),
+    (EditNotes, '/editnotes/<int:id>')
 ]

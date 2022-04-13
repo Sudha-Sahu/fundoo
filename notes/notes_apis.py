@@ -1,84 +1,88 @@
-from flask import request
+from flask import request, session
 from mongoengine import ValidationError
 from flask_restful import Resource
 import json
-from model import UserForNotes, Notes
+from fundoo.user import model
+from .model import Notes
 import datetime
+from .validators import validate_new_note
+from .utils import get_token, decoded_token, token_required
 
 
-class RegistrationForNotes(Resource):
+class Note(Resource):
+    @token_required
     def post(self):
-        data = json.loads(request.data)
-        user_name = data.get('user_name')
-        password = data.get('password')
-        conf_password = data.get('conf_password')
-        email = data.get('email')
-        if conf_password != password:
-            return {'error': 'password did not matched'}
+        req_data = request.data
+        note_data = json.loads(req_data)
         try:
-            new_user = UserForNotes(user_name=user_name, password=password, email=email)
-            new_user.save()
-        except ValidationError as e:
-            return {'error': e.to_dict()}
-        return {'msg': 'new user added successfully for keeping notes'}
-
-
-class LoginForNotes(Resource):
-    def get(self):
-        try:
-            data = request.args
-            user_name = data.get('user_name')
-            password = data.get('password')
-            user = UserForNotes.objects.get(user_name=user_name)
-            token = None
-            if not user:
-                return {'error': 'user not found'}
-            if password != user.password:
-                return {'error': 'password not matching'}
-            user.save()
-            return {'msg': 'you are logged in....'}
-        except Exception:
-            return {'error': 'some error occured Please login again', 'status code': 400}
-
-
-class AddNewNote(Resource):
-    def post(self):
-        data = json.loads(request.data)
-        note_id = data.get('id')
-        title = data.get('title')
-        body = data.get('note_body')
-        note_created = datetime.datetime.now()
-        try:
-            new_note = Notes(id=note_id, title=title, note_body=body, note_created=note_created)
+            note_id = note_data.get('id')
+            topic = note_data.get('topic')
+            note_body = note_data.get('note_body')
+            note_created = datetime.datetime.now()
+            data_validate = validate_new_note(note_data)
+            if data_validate:
+                return data_validate
+            new_note = Notes(id=note_id, topic=topic, note_body=note_body, note_created=note_created)
             new_note.save()
-        except Exception as e:
-            return {'error': f"{e} write again your note"}
-        return {'msg': 'successfully user added notes'}
-
-
-class EditNote(Resource):
-    def post(self):
-        try:
-            data = json.loads(request.data)
-            note_id = data.get('id')
-            new_id = Notes.objects.get(id=note_id)
-            if not new_id:
-                return {"msg": "note not found that you want to edit"}
-            new_id.title = data.get('title')
-            new_id.note_body = data.get('note_body')
-            new_id.save()
-            return {"msg": "user has edited and update the note"}
+            print(new_note)
         except Exception:
-            return {'msg': "note id is not valid"}
+            return {'Error': "something went wrong", 'code': 505}
 
+        return {'msg': 'User added new notes', 'code': 200}
 
-class DeleteNote(Resource):
+    @token_required
     def get(self):
-        note_id = request.form.get('user_id')
-        data = Notes.objects(id=note_id).first()
-        if not data:
-            return {'message': 'note id not found!!'}
-        data.deleteOne(id=note_id)
-        data.save()
-        return {'msg': "user note has deleted!!!"}
+        req_data = request.data
+        note = json.loads(req_data)
+        try:
+            note['user_id'] = session['user_id']
+            my_notes = Notes.objects.filter(user_id=note['user_id']).first()
+            if not my_notes:
+                return {'msg': 'Something went wrong', 'error code': 400}
+            all_notes = []
+            for note in my_notes:
+                dict_itr = note.to_dict()
+                all_notes.append(dict_itr)
+            print(all_notes)
+        except Exception as e:
+            return {'Error': "didn't find any notes"}
 
+        return {'notes': all_notes}
+
+
+class EditNotes(Resource):
+    @token_required
+    def patch(self, note_id):
+        try:
+            note = Notes.objects.filter(id=note_id, user_id=session['user_id']).first()
+            new_body = request.form.get('note_body')
+            note.update(note_body=new_body)
+        except Exception as e:
+            return {'Error': str(e), 'code': 500}
+        return {'message': 'Notes updated', 'code': 200}
+
+    @token_required
+    def delete(self, note_id):
+        try:
+            note = Notes.objects.filter(id=note_id,  user_id=session['user_id']).first()
+            if note:
+                note.delete()
+            return {'message': 'Notes Deleted', 'code': 200}
+        except Exception:
+            return {'msg': "note not found"}
+
+    @token_required
+    def get(self, note_id):
+        notes = Notes.objects.get(id=note_id).first()
+        try:
+            if notes:
+                return {
+                    'id': notes['id'],
+                    'title': notes['title'],
+                    'note_body': notes['note_body'],
+                    'user_id': notes['user_id'],
+                    'user_name': notes['user_name'],
+                    'date_created': str(notes['date_created'])
+                }
+        except Exception:
+            return {'msg': "note not found"}
