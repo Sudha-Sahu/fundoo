@@ -2,8 +2,8 @@ from flask import request, session, render_template
 from mongoengine import ValidationError, NotUniqueError
 from flask_restful import Resource
 import json
-from model import User
-from util import send_email, get_token, token_required, decoded_token
+from .model import User
+from .util import send_email, get_token, token_required, decoded_token
 from dotenv import load_dotenv
 load_dotenv()
 

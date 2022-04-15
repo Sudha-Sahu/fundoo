@@ -6,7 +6,7 @@ from flask import request
 import jwt
 from dotenv import load_dotenv
 import datetime
-from fundoo.user.model import User
+from .model import User
 load_dotenv()
 
 

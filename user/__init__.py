@@ -1,4 +1,4 @@
-from apis import UserRegistration, LogoutUser, ResetPassword, ForgetPassword, LoginUser, ActivateAccount
+from .user_apis import UserRegistration, LogoutUser, ResetPassword, ForgetPassword, LoginUser, ActivateAccount
 
 user_routes = [
     (LoginUser, '/login/'),

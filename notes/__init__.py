@@ -1,6 +1,6 @@
-from .notes_apis import Note, EditNotes
+from .notes_apis import NoteAPI, EditNotes
 
 notes_routes = [
-    (Note, '/notes/'),
-    (EditNotes, '/editnotes/<int:id>')
+    (NoteAPI, '/api/notes'),
+    (EditNotes, '/editnotes/<int:note_id>')
 ]

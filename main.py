@@ -10,7 +10,7 @@ load_dotenv()
 user_database()
 
 app = Flask(__name__)
-app.config['SECRET_KEY'] = str(os.getenv("SECRET_KEY"))
+app.config['SECRET_KEY'] = str(os.environ.get("SECRET_KEY"))
 api = Api(app)
 
 
