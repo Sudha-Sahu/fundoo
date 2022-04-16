@@ -1,84 +1,221 @@
-from flask import request
+from flask import request, session
 from mongoengine import ValidationError
 from flask_restful import Resource
 import json
-from model import UserForNotes, Notes
+from .model import Notes
+from labels.model import Label
 import datetime
+from .utils import token_required
+from .validators import validate_new_note
 
 
-class RegistrationForNotes(Resource):
-    def post(self):
-        data = json.loads(request.data)
-        user_name = data.get('user_name')
-        password = data.get('password')
-        conf_password = data.get('conf_password')
-        email = data.get('email')
-        if conf_password != password:
-            return {'error': 'password did not matched'}
+class NoteAPI(Resource):
+    @token_required
+    def post(self, *args, **kwargs):
+        """
+            This API is used to create a note for user
+            @param request: It takes note-title, description, label(optional)
+            @return: creates successful user notes
+        """
         try:
-            new_user = UserForNotes(user_name=user_name, password=password, email=email)
-            new_user.save()
-        except ValidationError as e:
-            return {'error': e.to_dict()}
-        return {'msg': 'new user added successfully for keeping notes'}
-
-
-class LoginForNotes(Resource):
-    def get(self):
-        try:
-            data = request.args
-            user_name = data.get('user_name')
-            password = data.get('password')
-            user = UserForNotes.objects.get(user_name=user_name)
-            token = None
-            if not user:
-                return {'error': 'user not found'}
-            if password != user.password:
-                return {'error': 'password not matching'}
-            user.save()
-            return {'msg': 'you are logged in....'}
-        except Exception:
-            return {'error': 'some error occured Please login again', 'status code': 400}
-
-
-class AddNewNote(Resource):
-    def post(self):
-        data = json.loads(request.data)
-        note_id = data.get('id')
-        title = data.get('title')
-        body = data.get('note_body')
-        note_created = datetime.datetime.now()
-        try:
-            new_note = Notes(id=note_id, title=title, note_body=body, note_created=note_created)
-            new_note.save()
-        except Exception as e:
-            return {'error': f"{e} write again your note"}
-        return {'msg': 'successfully user added notes'}
-
-
-class EditNote(Resource):
-    def post(self):
-        try:
+            user_id = self.get('_id')
             data = json.loads(request.data)
-            note_id = data.get('id')
-            new_id = Notes.objects.get(id=note_id)
-            if not new_id:
-                return {"msg": "note not found that you want to edit"}
-            new_id.title = data.get('title')
-            new_id.note_body = data.get('note_body')
-            new_id.save()
-            return {"msg": "user has edited and update the note"}
+            title = data.get('title')
+            desc = data.get('desc')
+            color = data.get('color')
+            #label_id = data.get('label_id')
+            note_created = datetime.datetime.now()
+            notes = Notes(title=title,
+                          desc=desc,
+                          user_id=user_id,
+                          color=color,
+                          note_created=note_created)
+            notes.save()
+            return {'msg': 'User added new notes', 'code': 200}
         except Exception:
-            return {'msg': "note id is not valid"}
+            return {'error': "user not found"}
+
+    @token_required
+    def get(self, *args, **kwargs):
+        """
+            This API is used to fetch all notes of the user
+            @return: returns all notes
+        """
+        user_id = self.get('_id')
+        note_filter = request.args.get('filter')
+        print(note_filter)
+
+        all_notes = []
+
+        try:
+
+            if note_filter == 'pinned':
+                my_notes = Notes.objects.filter(user_id=user_id, is_trash=False, is_pinned=True)
+            elif note_filter == "trash":
+                my_notes = Notes.objects.filter(user_id=user_id, is_trash=True).order_by("-is_pinned")
+            else:
+                my_notes = Notes.objects.filter(user_id=user_id, is_trash=False).order_by("-is_pinned")
+            if not my_notes:
+                return {'msg': 'NO NOTE PRESENT IN DATABASE', 'error code': 400}
+
+            for note in my_notes:
+                dict_itr = note.to_dict()
+                all_notes.append(dict_itr)
+            #print(all_notes)
+        except TypeError as e:
+            return {'Error': f" {e} didn't find any notes"}
+        return {'notes': all_notes}
 
 
-class DeleteNote(Resource):
-    def get(self):
-        note_id = request.form.get('user_id')
-        data = Notes.objects(id=note_id).first()
-        if not data:
-            return {'message': 'note id not found!!'}
-        data.deleteOne(id=note_id)
-        data.save()
-        return {'msg': "user note has deleted!!!"}
+class EditNotes(Resource):
+    @token_required
+    def patch(self, *args, **kwargs):
+        """
+            This API is used to update the existing note
+            @param request: title, description
+            @param note_id: primary_key of the specific note
+            @return: updates the note
+        """
+        try:
+            note_id = kwargs['note_id']
+            user_id = self.get('_id')
+            note = Notes.objects.filter(id=note_id, user_id=user_id).first()
+            updated_data = request.form
+            note.update(**updated_data)
+            label = Label.objects.filter(user_id=user_id, id=note.label_id).first()
+            if not label:
+                label = Label(user_id=user_id, id=note.label_id)
+                label.save()
 
+        except Exception as e:
+            return {'Error': str(e), 'code': 500}
+        return {'message': 'Notes updated', 'code': 200}
+
+    @token_required
+    def delete(self, *args, **kwargs):
+        """
+           This API is used to delete and trash existing note
+           @param note_id: primary_key of the specific note
+           @return: trash or delete the note if it is already trashed
+        """
+        try:
+            note_id = kwargs['note_id']
+            user_id = self.get('_id')
+            note = Notes.objects.filter(id=note_id,  user_id=user_id).first()
+            if note:
+                note.delete()
+            return {'message': 'Notes Deleted', 'code': 200}
+        except Exception:
+            return {'msg': "note not found"}
+
+    @token_required
+    def get(self, *args, **kwargs):
+        """
+            This API is used to fetch a notes by note id
+            @param note_id: primary_key of the specific note
+            @return: returns the note if it exist and belongs to the user
+        """
+        note_id = kwargs['note_id']
+        user_id = self.get('_id')
+        notes = Notes.objects.filter(id=note_id, user_id=user_id).first()
+        try:
+            if notes['id'] == note_id:
+                return {
+                    'id': notes['id'],
+                    'title': notes['title'],
+                    'desc': notes['desc'],
+                    'user_id': notes['user_id'],
+                    'is_pinned': notes['is_pinned'],
+                    'is_trash': notes['is_trash'],
+                    'color': notes['color'],
+                    'date_created': str(notes['note_created'])
+                }
+        except Exception:
+            return {'msg': "note not found"}
+
+
+class PinNotes(Resource):
+    @token_required
+    def post(self, *args, **kwargs):
+        """
+            This API is used to pin a notes by note id
+            @param note_id: primary_key of the specific note
+            @return: pins the note
+        """
+        note_id = kwargs['note_id']
+        user_id = self.get('_id')
+        print(user_id, note_id)
+        notes = Notes.objects.get(id=note_id)
+        try:
+            if not notes:
+                return {'msg': 'Could not find the note', 'status code': 400}
+            if notes['user_id'] == user_id:
+                notes.is_pinned = True
+                notes.save()
+                return {
+                    'id': notes['id'],
+                    'title': notes['title'],
+                    'desc': notes['desc'],
+                    'user_id': notes['user_id'],
+                    'is_pinned': notes['is_pinned'],
+                    'is_trash': notes['is_trash'],
+                    'color': notes['color'],
+                    'date_created': str(notes['note_created'])
+                }
+        except Exception as e:
+            return {'msg': f'{e} some error occured'}
+
+
+class TrashNotes(Resource):
+    @token_required
+    def post(self, *args, **kwargs):
+        """
+            This API is used to trash a notes by note id
+            @param note_id: primary_key of the specific note
+            @return: trashes the note
+        """
+        note_id = kwargs['note_id']
+        user_id = self.get('_id')
+        print(user_id, note_id)
+        notes = Notes.objects.get(id=note_id)
+        try:
+            if not notes:
+                return {'msg': 'Could not find the note', 'status code': 400}
+            if notes['user_id'] == user_id:
+                notes.is_trash = True
+                notes.save()
+                return {
+                    'id': notes['id'],
+                    'title': notes['title'],
+                    'desc': notes['desc'],
+                    'user_id': notes['user_id'],
+                    'is_pinned': notes['is_pinned'],
+                    'is_trash': notes['is_trash'],
+                    'color': notes['color'],
+                    'date_created': str(notes['note_created'])
+                }
+        except Exception as e:
+            return {'msg': f'{e} some error occured'}
+"""
+
+class LabelNoteAPI(Resource):
+    @token_required
+    def post(self,  *args, **kwargs):
+        
+            This API is used to add a note to a label
+            @param request: label id
+            @return: adds label id to the note
+        
+        data = json.loads(request.data)
+        label_id = data.get('label_id')
+        lb = Label.objects.filter(id=label_id).first()
+        user_id = self.get('_id')
+        notes = Notes.objects.get(id=user_id)
+        try:
+            if notes[user_id] != user_id:
+                return {'msg': 'Users ids does not match', 'status code': 400}
+            if notes['user_id'] == user_id:
+                pass
+        except:
+            return
+"""

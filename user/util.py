@@ -2,11 +2,12 @@ import os
 import smtplib
 import email.message
 from functools import wraps
-from flask import request
+from flask import request, session
 import jwt
 from dotenv import load_dotenv
-import datetime
-from fundoo.user.model import User
+from datetime import timedelta
+from .model import User
+from flask_jwt_extended import decode_token, create_access_token
 load_dotenv()
 
 
@@ -33,11 +34,15 @@ def send_email(mail, template):
     print('Mail Sent')
 
 
-def get_token(user_id, user_name):
-    token = jwt.encode({'user_id': user_id, 'user_name': user_name, 'Exp': str(datetime.datetime.utcnow() + datetime.timedelta(seconds=1000))},
+def get_token(id):
+    encoded_token = create_access_token(identity=id, expires_delta=timedelta(minutes=60000))
+    return encoded_token
+"""
+def get_token(user_id):
+    token = jwt.encode({'user_id': user_id},
                        os.environ.get('SECRET_KEY'), algorithm="HS256")
     return token
-
+"""
 
 def decoded_token(token):
     data = jwt.decode(token, os.environ.get('SECRET_KEY'), algorithms=["HS256"])
