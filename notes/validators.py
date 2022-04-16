@@ -1,5 +1,3 @@
-from .model import Notes
-from mongoengine import ValidationError
 
 
 def validate_new_note(data):

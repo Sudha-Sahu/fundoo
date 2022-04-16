@@ -1,5 +1,7 @@
-from mongoengine import SequenceField, Document, StringField, DateTimeField, IntField, ReferenceField
+from mongoengine import SequenceField, Document, StringField, DateTimeField, IntField, ReferenceField, BooleanField, \
+    ListField, PULL
 import datetime
+from labels.model import Label
 
 
 class Notes(Document):
@@ -7,6 +9,10 @@ class Notes(Document):
     user_id = IntField()
     title = StringField(required=True, max_length=20)
     desc = StringField(max_length=500)
+    is_trash = BooleanField(default=False)
+    is_pinned = BooleanField(default=False)
+    color = StringField(default='black')
+    label_id = ListField(ReferenceField(Label, reverse_delete_rule=PULL))
     note_created = DateTimeField(required=True, default=datetime.datetime.now)
 
     def __repr__(self):
@@ -17,5 +23,9 @@ class Notes(Document):
                      "user_id": self.user_id,
                      "title": self.title,
                      "desc": self.desc,
+                     "is_trash": self.is_trash,
+                     "is_pinned": self.is_pinned,
+                     "color": self.color,
+                     #"label": self.label,
                      "note_created": str(self.note_created)}
         return note_data

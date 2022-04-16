@@ -1,6 +1,4 @@
 import os
-import smtplib
-import email.message
 from functools import wraps
 from flask import request, session
 import jwt
