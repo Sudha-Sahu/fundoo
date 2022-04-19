@@ -2,14 +2,8 @@ from functools import wraps
 from flask import request
 import jwt
 from dotenv import load_dotenv
-import datetime
+
 load_dotenv()
-
-
-def encoded_token(user_id):
-    token = jwt.encode({'user_id': user_id, 'Exp': str(datetime.datetime.utcnow() + datetime.timedelta(seconds=1000))},
-                       'secret', algorithm="HS256")
-    return token
 
 
 def decoded_token(token):
@@ -34,4 +28,3 @@ def token_required(func):
 
         return func({'_id': data['user_id']}, *args, **kwargs)
     return decorator
-

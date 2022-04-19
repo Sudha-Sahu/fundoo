@@ -10,9 +10,7 @@ class Label(Document):
         label_data = {
             'id': self.id,
             'label': self.label,
-            'user-id': self.user_id
+            'user_id': self.user_id
         }
         return label_data
 
-    def __repr__(self):
-        return f"id: {self.id}, user_id : {self.user_id}"
