@@ -2,12 +2,11 @@ import os
 import smtplib
 import email.message
 from functools import wraps
-from flask import request, session
+from flask import request
 import jwt
 from dotenv import load_dotenv
-from datetime import timedelta
 from .model import User
-from flask_jwt_extended import decode_token, create_access_token
+
 load_dotenv()
 
 
@@ -34,18 +33,14 @@ def send_email(mail, template):
     print('Mail Sent')
 
 
-def get_token(id):
-    encoded_token = create_access_token(identity=id, expires_delta=timedelta(minutes=60000))
-    return encoded_token
-"""
 def get_token(user_id):
     token = jwt.encode({'user_id': user_id},
-                       os.environ.get('SECRET_KEY'), algorithm="HS256")
+                       str(os.environ.get('SECRET_KEY')), algorithm="HS256")
     return token
-"""
+
 
 def decoded_token(token):
-    data = jwt.decode(token, os.environ.get('SECRET_KEY'), algorithms=["HS256"])
+    data = jwt.decode(token, str(os.environ.get('SECRET_KEY')), algorithms=["HS256"])
     return data
 
 
@@ -61,7 +56,7 @@ def token_required(func):
             data = decoded_token(token)
             current_user = User.objects(user_name=data.user_name).first()
         except Exception as e:
-            return {'message': 'token is invalid', 'code': 409}
+            return {'message': f'{e} token is invalid', 'code': 409}
 
         return func(current_user, *args, **kwargs)
     return user_decorator

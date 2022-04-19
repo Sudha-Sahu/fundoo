@@ -12,3 +12,4 @@ class User(Document):
     is_active = BooleanField(default=False)
     gender = StringField(required=False)
     db_created = DateTimeField(default=datetime.datetime.now)
+

@@ -7,12 +7,16 @@ from .util import send_email, get_token, token_required, decoded_token
 from dotenv import load_dotenv
 from .validators import validate_login
 from .task import send_mail
-from flask_jwt_extended import decode_token, create_access_token
 import jwt
 load_dotenv()
 
 
 class LoginAPI(Resource):
+    """
+        This API is used to authenticate user to access resources
+        @param request: user credential like username and password
+        @return: Returns success message and access token on successful login
+    """
     def get(self):
         data = request.args
         user_name = data.get('user_name')
@@ -25,13 +29,13 @@ class LoginAPI(Resource):
         if not new_user.is_active:
             token = jwt.encode({"user_id": new_user.id}, "secret", algorithm="HS256")
             url = f'http://127.0.0.1:9090//activate?token={token}'
-            return {'msg': 'Activate your account', 'AccountActicationlink': url}
+            return {'msg': 'Activate your account', 'AccountActivationLink': url}
         if password != new_user.password:
             return {'error': 'password not matching'}
         token = jwt.encode({"user_id": new_user.id}, "secret", algorithm="HS256")
         decode_ = jwt.decode(token, "secret", algorithms=["HS256"])
         print('decoded', decode_)
-        return {'msg': 'you are logged in....', 'token': token}
+        return {'msg': 'you are logged in....', 'token': token, 'status code': 200}
 
 
 class UserRegistration(Resource):

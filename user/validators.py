@@ -1,5 +1,4 @@
 from .model import User
-from flask import session
 
 
 def validate_login(body):
