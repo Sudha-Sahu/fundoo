@@ -4,5 +4,5 @@ notes_routes = [
     (NoteAPI, '/api/notes'),
     (EditNotes, '/api/editnotes/<int:note_id>'),
     (PinNotes, '/api/pinnote/<int:note_id>'),
-    (TrashNotes, '/api/trashnote/<int:note_id>'),
+    (TrashNotes, '/api/trashnote/<int:note_id>')
 ]
