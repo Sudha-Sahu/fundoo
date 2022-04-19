@@ -1,10 +1,9 @@
-import os
+
 from functools import wraps
-from flask import request, session
+from flask import request
 import jwt
 from dotenv import load_dotenv
 import datetime
-from .model import Notes
 load_dotenv()
 
 
